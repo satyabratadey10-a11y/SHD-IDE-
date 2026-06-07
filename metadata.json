@@ -1,0 +1,6 @@
+{
+  "name": "Theia IDE Shell",
+  "description": "Desktop-class mobile IDE platform running locally via Termux backend.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

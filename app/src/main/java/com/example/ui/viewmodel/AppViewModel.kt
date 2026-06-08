@@ -83,11 +83,25 @@ class AppViewModel(
     }
 
     // Dialogs
-    fun showNewFileDialog(parentPath: String) = _uiState.update { it.copy(dialogState = DialogState.NewFile(parentPath)) }
-    fun showNewFolderDialog(parentPath: String) = _uiState.update { it.copy(dialogState = DialogState.NewFolder(parentPath)) }
-    fun showRenameDialog(nodePath: String, currentName: String) = _uiState.update { it.copy(dialogState = DialogState.Rename(nodePath, currentName)) }
-    fun showDeleteConfirmDialog(nodePath: String, name: String) = _uiState.update { it.copy(dialogState = DialogState.ConfirmDelete(nodePath, name)) }
-    fun dismissDialog() = _uiState.update { it.copy(dialogState = DialogState.None) }
+    fun showNewFileDialog(parentPath: String) {
+        _uiState.update { it.copy(dialogState = DialogState.NewFile(parentPath)) }
+    }
+    
+    fun showNewFolderDialog(parentPath: String) {
+        _uiState.update { it.copy(dialogState = DialogState.NewFolder(parentPath)) }
+    }
+    
+    fun showRenameDialog(nodePath: String, currentName: String) {
+        _uiState.update { it.copy(dialogState = DialogState.Rename(nodePath, currentName)) }
+    }
+    
+    fun showDeleteConfirmDialog(nodePath: String, name: String) {
+        _uiState.update { it.copy(dialogState = DialogState.ConfirmDelete(nodePath, name)) }
+    }
+    
+    fun dismissDialog() {
+        _uiState.update { it.copy(dialogState = DialogState.None) }
+    }
 
     // File Operations
     fun createFile(parentPath: String, name: String) {
@@ -248,6 +262,7 @@ class AppViewModel(
         }
     }
 
+    // Explict block actions requested by user
     fun undo(absolutePath: String) {
         _uiState.update { state ->
             val undoStack = state.undoStacks[absolutePath] ?: return@update state
@@ -286,12 +301,18 @@ class AppViewModel(
         }
     }
 
-    // View Controls
-    fun toggleExplorer() = _uiState.update { it.copy(isExplorerVisible = !it.isExplorerVisible) }
-    fun toggleTerminal() = _uiState.update { it.copy(isTerminalExpanded = !it.isTerminalExpanded) }
+    fun toggleExplorer() {
+        _uiState.update { it.copy(isExplorerVisible = !it.isExplorerVisible) }
+    }
+    
+    fun toggleTerminal() {
+        _uiState.update { it.copy(isTerminalExpanded = !it.isTerminalExpanded) }
+    }
 
     // Terminal
-    fun onTerminalInputChange(text: String) = _uiState.update { it.copy(terminalInputText = text) }
+    fun onTerminalInputChange(text: String) {
+        _uiState.update { it.copy(terminalInputText = text) }
+    }
     
     fun submitTerminalCommand() {
         val state = _uiState.value
@@ -315,7 +336,9 @@ class AppViewModel(
         }
     }
 
-    fun clearTerminal() = _uiState.update { it.copy(terminalLines = emptyList()) }
+    fun clearTerminal() {
+        _uiState.update { it.copy(terminalLines = emptyList()) }
+    }
     
     fun killProcess() {
         terminalRepository.killProcess()
@@ -353,5 +376,11 @@ class AppViewModel(
         }
     }
 
-    fun clearSnackbar() = _uiState.update { it.copy(snackbarMessage = null) }
+    fun showSnackbarMessage(message: String) {
+        _uiState.update { it.copy(snackbarMessage = message) }
+    }
+
+    fun clearSnackbar() {
+        _uiState.update { it.copy(snackbarMessage = null) }
+    }
 }

@@ -1,5 +1,9 @@
 package com.example
 
+import android.net.Uri
+import android.os.Environment
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,20 +20,54 @@ import com.example.ui.components.*
 import com.example.ui.viewmodel.AppViewModel
 import kotlinx.coroutines.launch
 
+private fun convertUriToFilePath(uri: Uri): String {
+    val path = uri.path ?: return "/sdcard"
+    if (path.contains("primary:")) {
+        val split = path.split("primary:")
+        if (split.size > 1) {
+            return Environment.getExternalStorageDirectory().absolutePath + "/" + split[1]
+        }
+    }
+    return path
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShdIdeApp(
-    viewModel: AppViewModel,
-    onOpenWorkspacePicker: () -> Unit
-) {
+fun ShdIdeApp(viewModel: AppViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearSnackbar()
+        }
+    }
+
+    val openWorkspaceLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        try {
+            uri?.let {
+                val path = convertUriToFilePath(it)
+                viewModel.openWorkspace(path)
+            }
+        } catch (e: Exception) {
+            viewModel.showSnackbarMessage("Failed to open workspace")
+        }
+    }
+
+    val openFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        try {
+            uri?.let {
+                val path = convertUriToFilePath(it)
+                val fileName = path.substringAfterLast("/")
+                viewModel.openFileInEditor(path, fileName)
+            }
+        } catch (e: Exception) {
+            viewModel.showSnackbarMessage("Failed to open file")
         }
     }
 
@@ -78,18 +116,34 @@ fun ShdIdeApp(
                 onToggleExplorer = viewModel::toggleExplorer,
                 onTabSelect = viewModel::switchTab,
                 onTabClose = viewModel::closeTab,
-                onNewTab = onOpenWorkspacePicker, // Normally creates new file, but prompts asks for folder picker here as well
+                onNewTab = { 
+                    try { 
+                        openFileLauncher.launch(arrayOf("*/*")) 
+                    } catch (e: Exception) {
+                        viewModel.showSnackbarMessage("File picker not available")
+                    }
+                },
                 onRun = viewModel::runCurrentScript,
                 onSave = viewModel::saveCurrentFile,
-                onUndo = { uiState.activeTabId?.let { id -> 
-                    val tab = uiState.openTabs.find { it.id == id }
-                    tab?.let { viewModel.undo(it.absolutePath) }
-                }},
-                onRedo = { uiState.activeTabId?.let { id -> 
-                    val tab = uiState.openTabs.find { it.id == id }
-                    tab?.let { viewModel.redo(it.absolutePath) }
-                }},
-                onOpenWorkspace = onOpenWorkspacePicker
+                onUndo = { 
+                    uiState.activeTabId?.let { id -> 
+                        val tab = uiState.openTabs.find { it.id == id }
+                        tab?.let { viewModel.undo(it.absolutePath) }
+                    }
+                },
+                onRedo = { 
+                    uiState.activeTabId?.let { id -> 
+                        val tab = uiState.openTabs.find { it.id == id }
+                        tab?.let { viewModel.redo(it.absolutePath) }
+                    }
+                },
+                onOpenWorkspace = { 
+                    try {
+                        openWorkspaceLauncher.launch(null)
+                    } catch (e: Exception) {
+                        viewModel.showSnackbarMessage("Folder picker not available")
+                    }
+                }
             )
 
             Row(modifier = Modifier.weight(1f)) {

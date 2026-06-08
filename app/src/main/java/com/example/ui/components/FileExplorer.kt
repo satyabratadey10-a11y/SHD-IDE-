@@ -111,16 +111,16 @@ fun FileExplorer(
             val selectedName = fileTree.flatten().find { it.absolutePath == selectedPath }?.name ?: ""
 
             IconButton(onClick = { onShowNewFileDialog(targetPath) }, enabled = targetPath.isNotEmpty()) {
-                Icon(Icons.Rounded.NoteAdd, "New File", tint = if (targetPath.isNotEmpty()) AccentCyan else OnSurfaceDim, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.NoteAdd, "New File", tint = if (targetPath.isNotEmpty()) AccentCyan else OnSurfaceDim.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = { onShowNewFolderDialog(targetPath) }, enabled = targetPath.isNotEmpty()) {
-                Icon(Icons.Rounded.CreateNewFolder, "New Folder", tint = if (targetPath.isNotEmpty()) AccentCyan else OnSurfaceDim, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.CreateNewFolder, "New Folder", tint = if (targetPath.isNotEmpty()) AccentCyan else OnSurfaceDim.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = { onShowRenameDialog(selectedPath!!, selectedName) }, enabled = hasSelection) {
-                Icon(Icons.Rounded.DriveFileRenameOutline, "Rename", tint = if (hasSelection) OnSurface else OnSurfaceDim, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.DriveFileRenameOutline, "Rename", tint = if (hasSelection) OnSurface else OnSurfaceDim.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
             }
             IconButton(onClick = { onShowDeleteDialog(selectedPath!!, selectedName) }, enabled = hasSelection) {
-                Icon(Icons.Rounded.DeleteOutline, "Delete", tint = if (hasSelection) ErrorRed else OnSurfaceDim, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.DeleteOutline, "Delete", tint = if (hasSelection) ErrorRed else OnSurfaceDim.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
             }
         }
     }

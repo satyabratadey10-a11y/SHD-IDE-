@@ -23,8 +23,11 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import com.example.data.model.EditorTab
-import com.example.engine.SyntaxTokenizer
 import com.example.ui.theme.*
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -50,6 +53,7 @@ fun CodeEditor(
     val scrollStateVertical = rememberScrollState()
     val scrollStateHorizontal = rememberScrollState()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(textFieldValue?.selection) {
         bringIntoViewRequester.bringIntoView()
@@ -57,6 +61,8 @@ fun CodeEditor(
 
     val lines = (textFieldValue?.text ?: "").split("\n")
     val lineCount = lines.size
+
+    val interactionSource = remember { MutableInteractionSource() }
 
     Row(modifier = modifier.background(Background)) {
         // Line number gutter
@@ -84,6 +90,11 @@ fun CodeEditor(
                 .fillMaxHeight()
                 .verticalScroll(scrollStateVertical)
                 .horizontalScroll(scrollStateHorizontal)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { focusRequester.requestFocus() }
+                )
         ) {
             val cursorLine = textFieldValue?.let {
                 it.text.substring(0, it.selection.start.coerceAtMost(it.text.length)).count { c -> c == '\n' }
@@ -103,20 +114,14 @@ fun CodeEditor(
                 onValueChange = onContentChange,
                 textStyle = codeStyle.copy(color = OnSurface),
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(top = 12.dp, start = 8.dp, end = 16.dp, bottom = 120.dp)
-                    .bringIntoViewRequester(bringIntoViewRequester),
+                    .bringIntoViewRequester(bringIntoViewRequester)
+                    .focusRequester(focusRequester),
                 cursorBrush = SolidColor(AccentCyan),
-                visualTransformation = SyntaxHighlightingVisualTransformation(),
+                visualTransformation = SyntaxVisualTransformation(activeTab.fileName),
                 decorationBox = { innerTextField -> innerTextField() }
             )
         }
-    }
-}
-
-class SyntaxHighlightingVisualTransformation : VisualTransformation {
-    override fun filter(text: androidx.compose.ui.text.AnnotatedString): TransformedText {
-        val highlighted = SyntaxTokenizer.applySyntaxHighlighting(text.text)
-        return TransformedText(highlighted, OffsetMapping.Identity)
     }
 }

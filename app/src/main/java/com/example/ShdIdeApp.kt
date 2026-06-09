@@ -1,9 +1,6 @@
 package com.example
 
-import android.net.Uri
 import android.os.Environment
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,18 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.DialogState
 import com.example.ui.components.*
 import com.example.ui.viewmodel.AppViewModel
-import kotlinx.coroutines.launch
-
-private fun convertUriToFilePath(uri: Uri): String {
-    val path = uri.path ?: return "/sdcard"
-    if (path.contains("primary:")) {
-        val split = path.split("primary:")
-        if (split.size > 1) {
-            return Environment.getExternalStorageDirectory().absolutePath + "/" + split[1]
-        }
-    }
-    return path
-}
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,31 +30,17 @@ fun ShdIdeApp(viewModel: AppViewModel) {
         }
     }
 
-    val openWorkspaceLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        try {
-            uri?.let {
-                val path = convertUriToFilePath(it)
-                viewModel.openWorkspace(path)
-            }
-        } catch (e: Exception) {
-            viewModel.showSnackbarMessage("Failed to open workspace")
-        }
-    }
+    var showWorkspacePicker by remember { mutableStateOf(false) }
 
-    val openFileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        try {
-            uri?.let {
-                val path = convertUriToFilePath(it)
-                val fileName = path.substringAfterLast("/")
-                viewModel.openFileInEditor(path, fileName)
-            }
-        } catch (e: Exception) {
-            viewModel.showSnackbarMessage("Failed to open file")
-        }
+    if (showWorkspacePicker) {
+        WorkspacePickerDialog(
+            initialPath = Environment.getExternalStorageDirectory().absolutePath,
+            onConfirm = { path ->
+                showWorkspacePicker = false
+                viewModel.openWorkspace(path)
+            },
+            onDismiss = { showWorkspacePicker = false }
+        )
     }
 
     val sheetState = rememberStandardBottomSheetState(
@@ -118,9 +90,15 @@ fun ShdIdeApp(viewModel: AppViewModel) {
                 onTabClose = viewModel::closeTab,
                 onNewTab = { 
                     try { 
-                        openFileLauncher.launch(arrayOf("*/*")) 
+                        val root = uiState.workspaceRootPath ?: run {
+                            val defaultPath = Environment.getExternalStorageDirectory().absolutePath + "/SHD-IDE"
+                            val dir = File(defaultPath)
+                            if (!dir.exists()) dir.mkdirs()
+                            defaultPath
+                        }
+                        viewModel.showNewFileDialog(root)
                     } catch (e: Exception) {
-                        viewModel.showSnackbarMessage("File picker not available")
+                        viewModel.showSnackbarMessage("Failed to initialize new file path")
                     }
                 },
                 onRun = viewModel::runCurrentScript,
@@ -137,13 +115,7 @@ fun ShdIdeApp(viewModel: AppViewModel) {
                         tab?.let { viewModel.redo(it.absolutePath) }
                     }
                 },
-                onOpenWorkspace = { 
-                    try {
-                        openWorkspaceLauncher.launch(null)
-                    } catch (e: Exception) {
-                        viewModel.showSnackbarMessage("Folder picker not available")
-                    }
-                }
+                onOpenWorkspace = { showWorkspacePicker = true }
             )
 
             Row(modifier = Modifier.weight(1f)) {

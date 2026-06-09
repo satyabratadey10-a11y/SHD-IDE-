@@ -163,20 +163,26 @@ class AppViewModel(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val content = fileRepository.readFileContent(absolutePath)
-            withContext(Dispatchers.Main) {
-                val tabId = UUID.randomUUID().toString()
-                val newTab = EditorTab(tabId, fileName, absolutePath)
-                _uiState.update { state ->
-                    val newTabs = state.openTabs + newTab
-                    val newContents = state.editorContents + (absolutePath to TextFieldValue(content))
-                    val newUndos = state.undoStacks + (absolutePath to UndoStack())
-                    state.copy(
-                        openTabs = newTabs,
-                        activeTabId = tabId,
-                        editorContents = newContents,
-                        undoStacks = newUndos
-                    )
+            try {
+                val content = fileRepository.readFileContent(absolutePath)
+                withContext(Dispatchers.Main) {
+                    val tabId = UUID.randomUUID().toString()
+                    val newTab = EditorTab(tabId, fileName, absolutePath)
+                    _uiState.update { state ->
+                        val newTabs = state.openTabs + newTab
+                        val newContents = state.editorContents + (absolutePath to TextFieldValue(content))
+                        val newUndos = state.undoStacks + (absolutePath to UndoStack())
+                        state.copy(
+                            openTabs = newTabs,
+                            activeTabId = tabId,
+                            editorContents = newContents,
+                            undoStacks = newUndos
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(snackbarMessage = "Failed to open file: ${e.message}") }
                 }
             }
         }

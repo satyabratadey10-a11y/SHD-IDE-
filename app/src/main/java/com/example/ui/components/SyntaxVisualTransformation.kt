@@ -21,59 +21,61 @@ private val KEYWORDS = Regex("""\b(val|var|fun|class|interface|object|return|if|
 private val NUMBERS = Regex("""\b\d+(\.\d+)?\b""")
 private val PUNCTUATION = Regex("""[{}[\]()]""")
 
+data class SyntaxToken(val range: IntRange, val style: SpanStyle)
+
 class SyntaxVisualTransformation(private val fileName: String) : VisualTransformation {
 
     override fun filter(text: AnnotatedString): TransformedText {
-        val extension = fileName.substringAfterLast('.', "").lowercase()
-        return TransformedText(
-            highlightSyntax(text.text, extension),
-            OffsetMapping.Identity
-        )
+        try {
+            val extension = fileName.substringAfterLast('.', "").lowercase()
+            return TransformedText(
+                highlightSyntax(text.text, extension),
+                OffsetMapping.Identity
+            )
+        } catch (e: Exception) {
+            return TransformedText(text, OffsetMapping.Identity)
+        }
     }
 
     private fun highlightSyntax(text: String, extension: String): AnnotatedString {
         return buildAnnotatedString {
             append(text)
-            val isStyled = BooleanArray(text.length)
-
-            fun applyStyle(range: IntRange, style: SpanStyle) {
-                if (range.isEmpty()) return
-                // Safe overlapping: Ensure none of the characters in the range are already styled
-                for (i in range) {
-                    if (i in isStyled.indices && isStyled[i]) return
-                }
-                addStyle(style, range.first, range.last + 1)
-                for (i in range) {
-                    if (i in isStyled.indices) {
-                        isStyled[i] = true
-                    }
-                }
-            }
-
+            
+            val tokens = mutableListOf<SyntaxToken>()
             val isHtmlXml = extension == "html" || extension == "xml"
 
-            // 1. Comments (SuccessGreen)
+            // 1. Comments
             if (isHtmlXml) {
-                HTML_COMMENT.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+                HTML_COMMENT.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = SuccessGreen))) }
             } else {
-                LINE_COMMENT.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
-                BLOCK_COMMENT.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+                LINE_COMMENT.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = SuccessGreen))) }
+                BLOCK_COMMENT.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = SuccessGreen))) }
             }
 
-            // 2. Strings (AccentAmber)
-            STRINGS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentAmber)) }
+            // 2. Strings
+            STRINGS.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = AccentAmber))) }
 
             // 3. Tags, Attributes, Keywords, Numbers
             if (isHtmlXml) {
-                HTML_TAGS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentCyan)) }
-                HTML_ATTRS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+                HTML_TAGS.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = AccentCyan))) }
+                HTML_ATTRS.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = SuccessGreen))) }
             } else {
-                KEYWORDS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentCyan)) }
-                NUMBERS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentAmber)) }
+                KEYWORDS.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = AccentCyan))) }
+                NUMBERS.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = AccentAmber))) }
             }
 
-            // 4. Punctuation (OnSurfaceDim)
-            PUNCTUATION.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = OnSurfaceDim)) }
+            // 4. Punctuation
+            PUNCTUATION.findAll(text).forEach { tokens.add(SyntaxToken(it.range, SpanStyle(color = OnSurfaceDim))) }
+
+            tokens.sortBy { it.range.first }
+
+            var lastStyledIndex = 0
+            for (token in tokens) {
+                if (token.range.first >= lastStyledIndex) {
+                    addStyle(token.style, token.range.first, token.range.last + 1)
+                    lastStyledIndex = token.range.last + 1
+                }
+            }
         }
     }
 }

@@ -8,7 +8,18 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import com.example.ui.theme.AccentAmber
 import com.example.ui.theme.AccentCyan
+import com.example.ui.theme.OnSurfaceDim
 import com.example.ui.theme.SuccessGreen
+
+private val HTML_COMMENT = Regex("""<!--[\s\S]*?-->""")
+private val LINE_COMMENT = Regex("""//.*""")
+private val BLOCK_COMMENT = Regex("""/\*[\s\S]*?\*/""")
+private val STRINGS = Regex("""("[^"\\]*(?:\\.[^"\\]*)*")|('[^'\\]*(?:\\.[^'\\]*)*')|(`[^`\\]*(?:\\.[^`\\]*)*`)""")
+private val HTML_TAGS = Regex("""</?[a-zA-Z0-9\-]+|/?>""")
+private val HTML_ATTRS = Regex("""\b[a-zA-Z\-:]+(?=\s*=)""")
+private val KEYWORDS = Regex("""\b(val|var|fun|class|interface|object|return|if|else|for|while|do|when|import|package|true|false|null|typeof|function|const|let|def|print|from|as|public|private|protected|suspend|override|await|async|yield)\b""")
+private val NUMBERS = Regex("""\b\d+(\.\d+)?\b""")
+private val PUNCTUATION = Regex("""[{}[\]()]""")
 
 class SyntaxVisualTransformation(private val fileName: String) : VisualTransformation {
 
@@ -23,52 +34,46 @@ class SyntaxVisualTransformation(private val fileName: String) : VisualTransform
     private fun highlightSyntax(text: String, extension: String): AnnotatedString {
         return buildAnnotatedString {
             append(text)
-            
-            // Strings: "..." or '...'
-            val stringRegex = Regex("(\"[^\"]*\")|('[^']*')")
-            stringRegex.findAll(text).forEach { matchResult ->
-                addStyle(SpanStyle(color = AccentAmber), matchResult.range.first, matchResult.range.last + 1)
-            }
+            val isStyled = BooleanArray(text.length)
 
-            // Comments
-            val singleLineCommentRegex = Regex("//.*")
-            singleLineCommentRegex.findAll(text).forEach { matchResult ->
-                addStyle(SpanStyle(color = SuccessGreen), matchResult.range.first, matchResult.range.last + 1)
-            }
-            
-            val multiLineCommentRegex = Regex("/\\*[\\s\\S]*?\\*/")
-            multiLineCommentRegex.findAll(text).forEach { matchResult ->
-                addStyle(SpanStyle(color = SuccessGreen), matchResult.range.first, matchResult.range.last + 1)
-            }
-
-            when (extension) {
-                "kt", "java", "js", "ts", "py" -> {
-                    val keywords = listOf(
-                        "val", "var", "fun", "class", "interface", "object", "return",
-                        "if", "else", "for", "while", "do", "when", "import", "package",
-                        "true", "false", "null", "typeof", "function", "const", "let",
-                        "def", "print", "from", "as", "public", "private", "protected"
-                    ).joinToString("|")
-                    
-                    val keywordRegex = Regex("\\b($keywords)\\b")
-                    keywordRegex.findAll(text).forEach { matchResult ->
-                        addStyle(SpanStyle(color = AccentCyan), matchResult.range.first, matchResult.range.last + 1)
-                    }
+            fun applyStyle(range: IntRange, style: SpanStyle) {
+                if (range.isEmpty()) return
+                // Safe overlapping: Ensure none of the characters in the range are already styled
+                for (i in range) {
+                    if (i in isStyled.indices && isStyled[i]) return
                 }
-                "html", "xml" -> {
-                    // HTML Tags
-                    val tagRegex = Regex("</?[a-zA-Z0-9]+>?|/?>")
-                    tagRegex.findAll(text).forEach { matchResult ->
-                        addStyle(SpanStyle(color = AccentCyan), matchResult.range.first, matchResult.range.last + 1)
-                    }
-                    
-                    // HTML Attributes
-                    val attrRegex = Regex("\\b[a-zA-Z\\-:]+(?=\\s*=)")
-                    attrRegex.findAll(text).forEach { matchResult ->
-                        addStyle(SpanStyle(color = SuccessGreen), matchResult.range.first, matchResult.range.last + 1)
+                addStyle(style, range.first, range.last + 1)
+                for (i in range) {
+                    if (i in isStyled.indices) {
+                        isStyled[i] = true
                     }
                 }
             }
+
+            val isHtmlXml = extension == "html" || extension == "xml"
+
+            // 1. Comments (SuccessGreen)
+            if (isHtmlXml) {
+                HTML_COMMENT.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+            } else {
+                LINE_COMMENT.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+                BLOCK_COMMENT.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+            }
+
+            // 2. Strings (AccentAmber)
+            STRINGS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentAmber)) }
+
+            // 3. Tags, Attributes, Keywords, Numbers
+            if (isHtmlXml) {
+                HTML_TAGS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentCyan)) }
+                HTML_ATTRS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = SuccessGreen)) }
+            } else {
+                KEYWORDS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentCyan)) }
+                NUMBERS.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = AccentAmber)) }
+            }
+
+            // 4. Punctuation (OnSurfaceDim)
+            PUNCTUATION.findAll(text).forEach { applyStyle(it.range, SpanStyle(color = OnSurfaceDim)) }
         }
     }
 }

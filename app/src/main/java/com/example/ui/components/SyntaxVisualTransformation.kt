@@ -11,19 +11,21 @@ import com.example.ui.theme.AccentCyan
 import com.example.ui.theme.OnSurfaceDim
 import com.example.ui.theme.SuccessGreen
 
-private val HTML_COMMENT = Regex("""<!--[\s\S]*?-->""")
-private val LINE_COMMENT = Regex("""//.*""")
-private val BLOCK_COMMENT = Regex("""/\*[\s\S]*?\*/""")
-private val STRINGS = Regex("""("[^"\\]*(?:\\.[^"\\]*)*")|('[^'\\]*(?:\\.[^'\\]*)*')|(`[^`\\]*(?:\\.[^`\\]*)*`)""")
-private val HTML_TAGS = Regex("""</?[a-zA-Z0-9\-]+|/?>""")
-private val HTML_ATTRS = Regex("""\b[a-zA-Z\-:]+(?=\s*=)""")
-private val KEYWORDS = Regex("""\b(val|var|fun|class|interface|object|return|if|else|for|while|do|when|import|package|true|false|null|typeof|function|const|let|def|print|from|as|public|private|protected|suspend|override|await|async|yield)\b""")
-private val NUMBERS = Regex("""\b\d+(\.\d+)?\b""")
-private val PUNCTUATION = Regex("""[{}[\]()]""")
-
 data class SyntaxToken(val range: IntRange, val style: SpanStyle)
 
 class SyntaxVisualTransformation(private val fileName: String) : VisualTransformation {
+
+    companion object {
+        private val HTML_COMMENT by lazy { Regex("""<!--[\s\S]*?-->""") }
+        private val LINE_COMMENT by lazy { Regex("""//.*""") }
+        private val BLOCK_COMMENT by lazy { Regex("""/\*[\s\S]*?\*/""") }
+        private val STRINGS by lazy { Regex("""("[^"\\]*(?:\\.[^"\\]*)*")|('[^'\\]*(?:\\.[^'\\]*)*')|(`[^`\\]*(?:\\.[^`\\]*)*`)""") }
+        private val HTML_TAGS by lazy { Regex("""</?[a-zA-Z0-9\-]+|/?>""") }
+        private val HTML_ATTRS by lazy { Regex("""\b[a-zA-Z\-:]+(?=\s*=)""") }
+        private val KEYWORDS by lazy { Regex("""\b(val|var|fun|class|interface|object|return|if|else|for|while|do|when|import|package|true|false|null|typeof|function|const|let|def|print|from|as|public|private|protected|suspend|override|await|async|yield)\b""") }
+        private val NUMBERS by lazy { Regex("""\b\d+(\.\d+)?\b""") }
+        private val PUNCTUATION by lazy { Regex("""[\{\}\[\]\(\)]""") }
+    }
 
     override fun filter(text: AnnotatedString): TransformedText {
         try {
